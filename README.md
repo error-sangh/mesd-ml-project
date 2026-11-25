@@ -1,84 +1,131 @@
-# MOSFET Drain Current Prediction Using Machine Learning
+# MESD: MOSFET Electrical Modeling and Machine Learning
 
-**Dataset Submission**
+Reproduction and extension of the research presented in **"Descriptor: MOSFET Electrical Simulation Dataset (MESD)"** (Zhang et al., IEEE Data Descriptions, 2024).
 
-## 1. Dataset Description
+This project investigates feature importance and machine-learning-based prediction of MOSFET drain current using the publicly available MESD simulation dataset.
 
-**Dataset Name:** MOSFET Electrical Simulation Dataset (MESD)
+## 1. Project Objectives
 
-**Original Source:** SJTU Yongfu Research Group, GitHub
+The project has two main objectives:
 
-**Original Contributors:** Yuhang Zhang, Kain Lu Low, Longfan Li, Leilai Shao, Yanan Sun, Jian Zhao, Yabin Sun, Yanling Shi, and Yongfu Li
+**Paper Reproduction**
 
-**Dataset Descriptor Published:** 2024
+- Reproduce the feature-importance analysis presented in Figure 7 of the original MESD paper.
+- Evaluate the contribution of transistor geometry, voltage biases, temperature, and process corner to drain current.
+- Compare the reported feature importance with results obtained using the available 55 nm NMOS devices.
 
-**Official Dataset URL:** https://github.com/SJTU-YONGFU-RESEARCH-GRP/MESD-MOSFET-Electrical-Simulation-Dataset
+**Research Extension**
 
-**Dataset Descriptor DOI:** https://doi.org/10.1109/IEEEDATA.2024.3481356
+- Investigate alternative feature importance techniques, including permutation importance and feature ablation.
+- Develop regression models for predicting MOSFET drain current.
+- Compare linear, polynomial, ensemble, and neural-network approaches.
+- Evaluate generalization across previously unseen transistor geometries.
+- Study how feature transformations and regularization affect prediction accuracy.
 
-This project uses the N45B-nmos1 subset of MESD. It contains electrical characteristics for one 45 nm NMOS device simulated in Cadence Spectre using the BSIM4.3 compact model. Each JSON record contains a gate-voltage sweep at a fixed drain voltage, width, channel length, temperature, and process corner. The exploration notebook pairs each gate voltage with its corresponding drain current to produce one row per operating point.
+## 2. Reference
 
-### Download and Load Instructions
+Y. Zhang et al., "Descriptor: MOSFET Electrical Simulation Dataset (MESD)," *IEEE Data Descriptions*, vol. 1, pp. 27–32, 2024.
 
-1. Use the bundled `data/raw/N45B-nmos1.json` file in this project. If you need a fresh copy, download [the JSON at the pinned upstream revision](https://raw.githubusercontent.com/SJTU-YONGFU-RESEARCH-GRP/MESD-MOSFET-Electrical-Simulation-Dataset/ab685f075e800c1d2e8312b710c5e840f91ae2e7/MESD2.0/N45B-nmos1.json) and save it to `data/raw/N45B-nmos1.json`.
-2. Run `uv sync` from the project root to install the Python environment.
-3. Open [`notebooks/01_dataset_exploration.ipynb`](notebooks/01_dataset_exploration.ipynb) in VS Code, select the project's `.venv/bin/python` kernel, and run all cells.
+- Paper: [https://doi.org/10.1109/IEEEDATA.2024.3481356](https://doi.org/10.1109/IEEEDATA.2024.3481356)
+- Dataset: [https://github.com/SJTU-YONGFU-RESEARCH-GRP/MESD-MOSFET-Electrical-Simulation-Dataset](https://github.com/SJTU-YONGFU-RESEARCH-GRP/MESD-MOSFET-Electrical-Simulation-Dataset)
+- Dataset DOI: [https://doi.org/10.21227/wa5a-r991](https://doi.org/10.21227/wa5a-r991)
 
-### Dataset Characteristics
+## 3. Dataset
 
-| Property | Description |
-| --- | --- |
-| Technology and device | 45 nm NMOS, N45B PDK, `nmos1` |
-| Simulator and compact model | Cadence Spectre, BSIM4.3 |
-| Gate voltage sweeps | 9,000 |
-| Points per sweep | 11 |
-| Total operating points | 99,000 |
-| Input features | 6 (5 numerical and 1 categorical) |
-| Learning task | Supervised regression |
-| Missing values across the inputs and target | 0 |
-| Operating points at positive drain bias | 82,500 |
+The main reproduction experiments use three 55 nm NMOS devices from the N55A process technology.
 
-The notebook found no exact duplicate I–V curves among the 7,500 positive-drain-bias sweeps. At the highest gate voltage, drain current followed (ff > tt > ss) in all 2,500 matched positive-bias conditions.
+| Device     | Simulation records | Operating points |
+| ---------- | -----------------: | ---------------: |
+| N55A-nmos1 |              7,500 |           97,500 |
+| N55A-nmos2 |              7,500 |           97,500 |
+| N55A-nmos3 |              7,500 |           97,500 |
 
-### Dataset Files
+Each device contains MOSFET characteristics generated using the BSIM4.5 compact model and Cadence Spectre simulation.
 
-`data/raw/N45B-nmos1.json` contains device metadata and a `Records` array of voltage sweeps. It also contains simulated capacitance values, which are excluded from the drain-current predictors.
+**Input features:** Vgs, Vds, W, L, Temp, Corner.
 
-### Input Features
+**Prediction target:** Ids (drain current).
 
-| Field | Description | Values |
-| --- | --- | --- |
-| `Vgs` | Gate-to-source voltage | 11 values from 0 to 1.0 V in 0.1 V steps |
-| `Vds` | Drain-to-source voltage | 6 values from 0 to 1.0 V in 0.2 V steps |
-| `W` | Transistor width | 10 values from 120 to 1,000 nm |
-| `L` | Channel length | 10 values from 60 to 1,000 nm |
-| `Temp` | Simulation temperature | −40, 0, 25, 85, and 125 °C |
-| `Corner` | Process corner | `ff` (fast-fast), `tt` (typical-typical), and `ss` (slow-slow) |
+The dataset includes 10 widths, 10 lengths, 5 temperatures, 3 process corners, 5 drain-voltage values, and 13 gate-voltage values per device.
 
-### Regression Target
+The data represent simulated transistor behavior, not direct physical measurements.
 
-The target is `Ids`, the simulated drain current in amperes. It ranges from −8.9331 × 10⁻¹⁰ A to 5.6515 × 10⁻⁴ A. Current values are strictly positive at positive drain bias, so that subset supports a base-10 log current experiment. The original signed currents at zero drain bias are retained in the dataset.
+## 4. Methodology
 
-## 2. Engineering Problem
+### Data Exploration
 
-The goal is to predict the drain current of a 45 nm NMOS transistor from voltage bias, geometry, temperature and process corner. Drain current curves help circuit designers evaluate how strongly a transistor conducts under different operating conditions. This project uses simulation data to evaluate whether a regression model can estimate those curves for transistor widths absent from training.
+- Inspect the simulation metadata and JSON structure.
+- Convert voltage-sweep records into tabular operating points.
+- Check missing values, duplicate inputs, and negative currents.
+- Visualize Ids–Vgs and Ids–Vds characteristics.
+- Compare electrical behavior across all three 55 nm NMOS devices.
 
-1. **Compare regression models.** Use linear regression as a baseline, then compare k-nearest neighbors, polynomial ridge regression, random forest, and gradient boosting.
-2. **Evaluate unseen widths.** Hold out entire transistor widths and keep every voltage sweep at those widths in the test set. Compare predictions using mean absolute error, root mean square error, and plots of simulated and predicted I–V curves.
-3. **Test the value of additional inputs.** Compare voltage-only models with models that also use device geometry, temperature, and process corner.
-4. **Evaluate low current prediction.** On the same positive-drain-bias points, compare fitting directly in amperes with fitting a log-current target. Convert predictions back to amperes for a common error comparison.
+### Paper Reproduction
 
-## 3. Reference Research Paper
+Reconstruct the feature-importance analysis from Figure 7.
 
-**Quantitative Evaluation of Model Complexity for MOSFET Drain Current Prediction Using Gradient Boosting and Baseline Regressors.**
+Published reference values:
 
-P. Sirish Kumar et al., *2025 10th International Conference on Research in Intelligent Computing in Engineering (RICE)*, pp. 1–6.
+| Feature | Importance |
+| ------- | ---------: |
+| Vgs     |       0.41 |
+| W       |       0.19 |
+| Vds     |       0.18 |
+| L       |       0.17 |
+| Corner  |       0.03 |
+| Temp    |       0.02 |
 
-**Paper URL:** https://doi.org/10.1109/RICE67503.2025.11439997
+The paper does not fully specify the original device selection, preprocessing, or estimator configuration. Therefore, reconstructed results are identified as reproduction attempts rather than exact replications.
 
+### Proposed Improvements
 
-## 4. Dataset Citation
+- Compare importance across different NMOS devices.
+- Evaluate permutation importance and feature ablation.
+- Investigate feature engineering and model complexity.
+- Compare regression algorithms using consistent evaluation protocols.
+- Analyze generalization to unseen transistor dimensions.
 
-Zhang, Y., Low, K.-L., Li, L., Shao, L., Sun, Y., Zhao, J., Sun, Y., Shi, Y., & Li, Y. (2024). Descriptor: MOSFET Electrical Simulation Dataset (MESD). *IEEE Data Descriptions, 1*, 27–32. [10.1109/IEEEDATA.2024.3481356](https://doi.org/10.1109/IEEEDATA.2024.3481356)
+## 5. Repository Structure
 
-**Dataset License:** [Creative Commons Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/), as specified in the [upstream repository license](https://github.com/SJTU-YONGFU-RESEARCH-GRP/MESD-MOSFET-Electrical-Simulation-Dataset/blob/ab685f075e800c1d2e8312b710c5e840f91ae2e7/LICENSE).
+```text
+data/
+  raw/              Original MESD JSON files
+  processed/        Derived datasets
+
+notebooks/
+  MESD_project.ipynb
+
+pyproject.toml
+uv.lock
+README.md
+```
+
+## 6. Environment and Execution
+
+The project uses Python, Jupyter Notebook, pandas, NumPy, Matplotlib, and scikit-learn, with dependencies managed through `uv`.
+
+Install dependencies:
+
+```bash
+uv sync
+```
+
+Launch Jupyter:
+
+```bash
+uv run jupyter lab
+```
+
+Open `notebooks/MESD_project.ipynb`.
+
+## 7. Limitations
+
+The original paper primarily describes dataset construction, validation, and illustrative feature importance analysis. It does not provide a fully specified predictive-regression benchmark for direct accuracy comparison.
+
+Here, the predictive modeling experiments in this repository are extensions of the original work and performance claims will be restricted to evaluation protocols executed within this project.
+
+## 8. License and Attribution
+
+The MESD dataset and its original publication belong to their respective authors. Please consult the official dataset repository for applicable usage terms.
+
+This repository is an independent academic reproduction and extension.
