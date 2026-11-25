@@ -2,3 +2,7 @@
 __pycache__/
 .ipynb_checkpoints/
 
+
+# Data: download instructions in README
+data/raw/*.json
+data/processed/
